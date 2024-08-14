@@ -13,8 +13,16 @@ class Vote(models.Model):
     rerunable = models.BooleanField(default=False)
     
     def __str__(self) -> str:
-        return self.name
+        return f"Name {self.name} everyone {self.for_everyone}"
     
+    def save(self, *args, **kwargs): # Я заложник ИИ :(
+        if self.pk:
+            old = Vote.objects.get(pk = self.pk).for_everyone
+            new = self.for_everyone
+            if not old and new:
+                VoteUser.objects.filter(vote = self).delete()
+        super().save(*args, **kwargs)
+
 class VoteOption(models.Model):
     """
     Модель варианта для голосования
