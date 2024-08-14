@@ -1,8 +1,5 @@
 from django.shortcuts import render
 from .models import Vote,VoteOption
-from rest_framework.views import APIView 
-from .serializers import VoteSerializer
-from rest_framework.response import Response
 
 
 def vote_exists(id):
