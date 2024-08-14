@@ -40,7 +40,6 @@ INSTALLED_APPS = [
     # custom stuff
     'rest_framework.authtoken',
     # apps
-    'core.apps.CoreConfig',
     'vote.apps.VoteConfig',
     'survey.apps.SurveyConfig',
     'authentication.apps.AuthenticationConfig',

@@ -32,7 +32,7 @@ class VotePublishAPI(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self,request,pk):
-            data = vote_exists(id=pk)
+            data = vote_exists(pk)
             if data['exists']:
                 if data.who_create == request.user:
                     options = VoteOption.objects.filter(vote_model = pk).all()
@@ -68,8 +68,8 @@ class OptionUpdateAPI(APIView):
     permission_classes = [IsAuthenticated]
     serializer_class = VoteOptionSerializer
 
-    def patch(self,request,*args,**kwargs):
-        data = option_exists(request.data['pk'])
+    def patch(self,request,pk,*args,**kwargs):
+        data = option_exists(pk)
         if data['exists']:
             vote = Vote.objects.get(pk = data['option'].vote_model.pk)
             if vote.who_create == request.user:
@@ -88,9 +88,8 @@ class OptionUpdateAPI(APIView):
 class OptionDeleteAPI(APIView):
     permission_classes = [IsAuthenticated]
 
-    def delete(self,request,*args,**kwargs):
-        print("Im here")
-        data = option_exists(request.data['pk'])
+    def delete(self,request,pk,*args,**kwargs):
+        data = option_exists(pk)
         if data['exists']:
             vote = Vote.objects.get(pk = data['option'].vote_model.pk)
             if vote.who_create == request.user:
@@ -106,6 +105,7 @@ class OptionDeleteAPI(APIView):
         
 class VoteUpdateAPI(APIView):
     permission_classes = [IsAuthenticated]
+    
     def patch(self,request,pk,*args,**kwargs):
         data = vote_exists(pk)
         if data['exists']:
@@ -122,8 +122,8 @@ class VoteUpdateAPI(APIView):
         else:
             return Response(data={'message': "Введен несуществующий id"},status=400)     
                    
-    def put(self,request,*args,**kwargs): # Копипаст patch метода кроме Partial, мб не прав
-        data = vote_exists(request.data['pk'])
+    def put(self,request,pk,*args,**kwargs): # Копипаст patch метода кроме Partial, мб не прав
+        data = vote_exists(pk)
         if data['exists']:
             if data['vote'].who_create == request.user:
                 if data['vote'].published == False:
@@ -141,8 +141,8 @@ class VoteUpdateAPI(APIView):
 class VoteDeleteAPI(APIView):
     permission_classes = [IsAuthenticated]
 
-    def delete(self,request,*args,**kwargs):
-        data = option_exists(request.data['pk'])
+    def delete(self,request,pk,*args,**kwargs):
+        data = option_exists(pk)
         if data['exists']:
             vote = Vote.objects.get(pk = data['option'].vote_model.pk)
             if vote.who_create == request.user:
