@@ -1,3 +1,4 @@
+from typing import Any
 from django.db import models
 from authentication.models import User
 
@@ -10,7 +11,7 @@ class Vote(models.Model):
     question = models.CharField(null=False,max_length=255)
     published = models.BooleanField(default=False)
     for_everyone = models.BooleanField(default=True)
-    rerunable = models.BooleanField(default=False)
+    rerunable = models.BooleanField(default=False) # todo Логика не реализована p.s. скорее всего и не нужна
     
     def __str__(self) -> str:
         return f"Name {self.name} everyone {self.for_everyone}"
@@ -22,6 +23,7 @@ class Vote(models.Model):
             if not old and new:
                 VoteUser.objects.filter(vote = self).delete()
         super().save(*args, **kwargs)
+    
 
 class VoteOption(models.Model):
     """
