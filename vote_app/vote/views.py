@@ -1,4 +1,3 @@
-from rest_framework import generics, permissions, viewsets
 from rest_framework.views import APIView
 from rest_framework.generics import ListAPIView
 from .models import Vote,VoteOption,VoteUser,VoteAnswer
@@ -117,3 +116,4 @@ class VoteListAPI(ListAPIView):
     def get_queryset(self):
         votes = Vote.objects.filter(Q(for_everyone = True) | Q(for_everyone = False, voteuser__user = self.request.user),published = True).distinct()
         return votes
+    
