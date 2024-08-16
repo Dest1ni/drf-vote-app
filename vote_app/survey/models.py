@@ -2,7 +2,7 @@ from typing import Iterable
 from django.db import models
 from authentication.models import User
 from django.core.exceptions import ValidationError
-
+from rest_framework.response import Response
 
 class Survey(models.Model):
     """
@@ -52,17 +52,8 @@ class QuestionAnswerOption(models.Model):
     option = models.ForeignKey(SurveyQuesitonOption,models.CASCADE)
     user = models.ForeignKey(User,models.CASCADE)
     free_answer = models.CharField(null=True,max_length=255)
-
-    def clean(self) -> None:
-        super().clean()
-        if self.option.option and self.free_answer:
-            raise ValidationError("Необходимо укзать либо 'option' либо 'free_answer'")
-        if not self.option and self.free_answer:
-            raise ValidationError("Необходимо укзать либо 'option' либо 'free_answer'")
-        
-    def save(self,*args,**kwargs) -> None:
-        self.clean()
-        super().save(self,*args,**kwargs)
+    class Meta:
+        unique_together = [["user","option"]]
 
 class SurveyUser(models.Model):
     """

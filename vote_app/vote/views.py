@@ -12,7 +12,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.db import transaction
 from django.db.models import Q
 
-class VoteCreateAPI(APIView):
+class VoteCreateAPI(APIView): # Готово
     serializer_class = VoteCreateSerializer
     permission_classes = [IsAuthenticated]
     
@@ -30,8 +30,8 @@ class VoteCreateAPI(APIView):
         return Response(VoteSerializer(vote).data)
     
 
-class VotePublishAPI(APIView): 
-    permission_classes = [IsAuthenticated]
+class VotePublishAPI(APIView): # теоретически можно было бы убрать т.к есть апи для изменения голосования, но отдельный апи для публикации
+    permission_classes = [IsAuthenticated] # делает лоигку публикации более гибкой
 
     def post(self, request, pk):
         serializer = VotePublishSerializer(data=request.data, context={"pk": pk, "request": request})
@@ -105,7 +105,7 @@ class VoteAnswerOptionAPI(APIView):
     def post(self,request,pk,*args,**kwargs):
         serializer = VoteAnswerOptionSerializer(data = request.data,context = {'pk':pk,'request':request})
         serializer.is_valid(raise_exception=True)
-        VoteAnswer.objects.create(option = serializer.validated_data['option'],user = self.request.user)
+        serializer.create(validated_data=serializer.validated_data)
         return Response(status=204)   
 
 class VoteListAPI(ListAPIView):

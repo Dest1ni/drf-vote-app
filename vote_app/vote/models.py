@@ -24,6 +24,9 @@ class Vote(models.Model):
                 VoteUser.objects.filter(vote = self).delete()
         super().save(*args, **kwargs)
     
+    class Meta:
+        unique_together = [['name','who_create']]
+    
 
 class VoteOption(models.Model):
     """
@@ -41,6 +44,9 @@ class VoteAnswer(models.Model):
     """
     option = models.ForeignKey(VoteOption,models.CASCADE)
     user = models.ForeignKey(User,models.CASCADE)
+
+    class Meta:
+        unique_together = [["option","user"]]
     
 class VoteUser(models.Model):
     """

@@ -1,6 +1,6 @@
 import json
 from rest_framework.views import APIView
-from .serializers import CreateSurveySerializer,SurveySerializer
+from .serializers import CreateSurveySerializer,SurveySerializer,AddSurveyQuestionSerializer,AddQuestionOptionSerializer,AnswerQuesionOptionSerializer
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.db import transaction
@@ -21,3 +21,31 @@ class CreateSurveyAPI(APIView):
                     user = User.objects.get(pk = item['user'])
                     SurveyUser.objects.create(user = user, survey = survey)
         return Response(SurveySerializer(survey).data,status=201)
+
+class AddSurveyQuestionAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self,request):
+        serializer = AddSurveyQuestionSerializer(data = request.data,context = {"request":request})
+        serializer.is_valid(raise_exception=True)
+        question = serializer.create(serializer.validated_data)
+        return Response(AddSurveyQuestionSerializer(question).data,status=201)
+
+class AddQuestionOptionAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self,request):
+        serializer = AddQuestionOptionSerializer(data = request.data,context = {"request":request})
+        serializer.is_valid(raise_exception=True)
+        question = serializer.create(serializer.validated_data)
+        return Response(AddQuestionOptionSerializer(question).data,status=201)
+
+class AnswerQuesionOptionAPI(APIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = AnswerQuesionOptionSerializer
+
+    def post(self,request):
+        serializer = AnswerQuesionOptionSerializer(data = request.data,context = {'request':request})
+        serializer.is_valid(raise_exception=True)
+        answer = serializer.save()
+        return Response(data = AnswerQuesionOptionSerializer(answer).data,status=201)
