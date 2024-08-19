@@ -24,6 +24,7 @@ class Survey(models.Model):
             if not old and new:
                 SurveyUser.objects.filter(survey = self).delete()
         super().save(*args, **kwargs)
+    
 
 class SurveyQuesiton(models.Model):
     """

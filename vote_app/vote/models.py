@@ -36,7 +36,7 @@ class VoteOption(models.Model):
     vote_model = models.ForeignKey(Vote,models.CASCADE)
     
     class Meta:
-        unique_together = [["choice","vote_model"]]
+        unique_together = [["choice","vote_model"]] # Запрещаем отвечать юзеру дважды
         
 class VoteAnswer(models.Model):
     """

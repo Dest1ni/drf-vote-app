@@ -1,18 +1,19 @@
 from rest_framework.views import APIView
 from rest_framework.generics import ListAPIView
-from .models import Vote,VoteOption,VoteUser,VoteAnswer
+from .models import Vote,VoteUser
 from authentication.models import User
 from .serializers import VoteCreateSerializer, VoteOptionCreateSerializer,VoteSerializer,\
     VoteUpdateSerializer,VotePublishSerializer,VoteOptionUpdateSerializer,VoteOptionDeleteSerializer,VoteDeleteSerializer,VoteAnswerOptionSerializer
-from rest_framework.viewsets import ModelViewSet
 from rest_framework.response import Response
-from .service import option_exists, vote_exists
 import json
 from rest_framework.permissions import IsAuthenticated
 from django.db import transaction
 from django.db.models import Q
+from .service import vote_exists
 
-class VoteCreateAPI(APIView): # Готово
+# TODO Добавить логику обновления списка пользователей которые могут пройти голосование 
+
+class VoteCreateAPI(APIView):
     serializer_class = VoteCreateSerializer
     permission_classes = [IsAuthenticated]
     
@@ -117,3 +118,12 @@ class VoteListAPI(ListAPIView):
         votes = Vote.objects.filter(Q(for_everyone = True) | Q(for_everyone = False, voteuser__user = self.request.user),published = True).distinct()
         return votes
     
+class VoteDetailAPI(APIView):
+
+    def get(self,request,pk):
+        vote = vote_exists(id = pk)
+        if not vote['exists']:
+            return Response("Неверный id",status=400)
+        serializer = VoteSerializer(vote['vote'])
+        return Response(serializer.data,status=200)
+

@@ -156,13 +156,16 @@ class VoteAnswerOptionSerializer(serializers.Serializer):
         if not self.context['request'].user == option['option'].vote_model.who_create and not option['option'].vote_model.for_everyone:
             if not VoteUser.objects.filter(vote = option['option'].vote_model,user = self.context['request'].user).exists():
                 raise serializers.ValidationError("Вам недоступно это голосование",code=400)
-        #VoteAnswer.objects.filter(user = self.context['request'].user, option = ) # Нужно проверить отвечал ли юзер на опции этого голосования
+        if VoteAnswer.objects.filter(option__vote_model=option['option'].vote_model, user=self.context['request'].user).exists():
+            raise serializers.ValidationError("Вы уже ответили на это голосование",code=400)
+        if not option['option'].vote_model.published:
+            raise serializers.ValidationError("Вы пытаетесь ответить на не опубликованное голосование",code=400)
         data['option'] = option['option']
+        data['user'] = self.context['request'].user
         return data
     
     def create(self, validated_data):
         try:
             VoteAnswer.objects.create(**validated_data)
-            return super().create(validated_data)
         except IntegrityError:
-            raise serializers.ValidationError("Вы пытаетесь ответить на голосование на которое уже ответили",code=400)
+            raise serializers.ValidationError("Вы уже ответили на это голосование",code=400)
