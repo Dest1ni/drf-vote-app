@@ -3,9 +3,8 @@ from .models import Vote,VoteOption,VoteUser,VoteAnswer
 from authentication.models import User
 from .service import vote_exists,option_exists
 from django.db.utils import IntegrityError
-from django.db.models import Exists, OuterRef
 
-class VoteCreateSerializer(serializers.Serializer): # Готово
+class VoteCreateSerializer(serializers.Serializer): # Обычный сериализатор дает более гибкую логику
     users_allowed = serializers.JSONField(required = False, 
                                           help_text="""[
                                           {
@@ -169,3 +168,27 @@ class VoteAnswerOptionSerializer(serializers.Serializer):
             VoteAnswer.objects.create(**validated_data)
         except IntegrityError:
             raise serializers.ValidationError("Вы уже ответили на это голосование",code=400)
+
+class AddUserToAllowedList(serializers.Serializer):
+    user_allowed = serializers.JSONField(required = True) #Отдельно не валидировал. TODO?
+
+    def validate(self, data):
+        vote = vote_exists(self.context['pk'])
+        if not vote['exists']:
+            raise serializers.ValidationError("Введен несуществующий id",code=400)
+        if vote['vote'].who_create != self.context['request'].user:
+            raise serializers.ValidationError("Вы не имеете доступа к голосованию",code=400)
+        return data
+    
+    def save(self, **kwargs):
+        print(**kwargs)
+
+class DeleteUserFromAllowedList(serializers.Serializer):
+    
+    def validate(self, data):
+        return data
+    
+    def save(self, **kwargs):
+
+        return super().save(**kwargs)
+

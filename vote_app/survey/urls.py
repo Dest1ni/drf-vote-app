@@ -1,5 +1,6 @@
 from django.urls import path
-from .views import CreateSurveyAPI,AddSurveyQuestionAPI,AddQuestionOptionAPI,AnswerQuesionOptionAPI,PublishSurveyAPI
+from .views import CreateSurveyAPI,AddSurveyQuestionAPI,AddQuestionOptionAPI,AnswerQuesionOptionAPI,PublishSurveyAPI,DetailSurveyAPI,UpdateSurveyAPI,\
+    ListSurveyAPI,UpdateSurveyQuestionAPI,UpdateSurveyQuestionOptionAPI,DeleteSurveyAPI,DeleteSurveyQuestionAPI,DeleteSurveyQuestionOptionAPI
 
 app_name = "survey"
 
@@ -9,6 +10,14 @@ urlpatterns = [
     path('api/v1/survey/add_option', AddQuestionOptionAPI.as_view(), name='survey-add-option'),
     path('api/v1/survey/answer_option', AnswerQuesionOptionAPI.as_view(), name='survey-answer-option'),
     path('api/v1/survey/publish/<int:pk>', PublishSurveyAPI.as_view(), name='survey-answer-option'),
+    path('api/v1/survey/detail/<int:pk>', DetailSurveyAPI.as_view(), name='survey-detail'),
+    path('api/v1/survey/update/<int:pk>', UpdateSurveyAPI.as_view(), name='survey-update'),
+    path('api/v1/survey/list', ListSurveyAPI.as_view(), name='survey-list'),
+    path('api/v1/survey/update_option/<int:pk>', UpdateSurveyQuestionOptionAPI.as_view(), name='survey-update-option'),
+    path('api/v1/survey/update_question/<int:pk>', UpdateSurveyQuestionAPI.as_view(), name='survey-delete-question'),
+    path('api/v1/survey/delete_question/<int:pk>', DeleteSurveyQuestionAPI.as_view(), name='survey-delete-question'),
+    path('api/v1/survey/delete_option/<int:pk>', DeleteSurveyQuestionOptionAPI.as_view(), name='survey-delete-question'),
+    path('api/v1/survey/delete_survey/<int:pk>', DeleteSurveyAPI.as_view(), name='survey-delete-question'),
 ]
 
 # Пример для единообразия API

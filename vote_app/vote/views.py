@@ -3,7 +3,8 @@ from rest_framework.generics import ListAPIView
 from .models import Vote,VoteUser
 from authentication.models import User
 from .serializers import VoteCreateSerializer, VoteOptionCreateSerializer,VoteSerializer,\
-    VoteUpdateSerializer,VotePublishSerializer,VoteOptionUpdateSerializer,VoteOptionDeleteSerializer,VoteDeleteSerializer,VoteAnswerOptionSerializer
+    VoteUpdateSerializer,VotePublishSerializer,VoteOptionUpdateSerializer,VoteOptionDeleteSerializer,VoteDeleteSerializer,VoteAnswerOptionSerializer,\
+    AddUserToAllowedList
 from rest_framework.response import Response
 import json
 from rest_framework.permissions import IsAuthenticated
@@ -11,10 +12,7 @@ from django.db import transaction
 from django.db.models import Q
 from .service import vote_exists
 
-# TODO Добавить логику обновления списка пользователей которые могут пройти голосование 
-
 class VoteCreateAPI(APIView):
-    serializer_class = VoteCreateSerializer
     permission_classes = [IsAuthenticated]
     
     def post(self,request,*args,**kwargs):
@@ -46,7 +44,6 @@ class VotePublishAPI(APIView): # теоретически можно было б
     
 class VoteAddOptionAPI(APIView): 
     permission_classes = [IsAuthenticated]
-    serializer_class = VoteOptionCreateSerializer
 
     def post(self,request,*args,**kwargs):
         serializer = VoteOptionCreateSerializer(data = request.data,context={'pk':request.data['vote_model'],'request':request})
@@ -57,7 +54,6 @@ class VoteAddOptionAPI(APIView):
 
 class OptionUpdateAPI(APIView):  
     permission_classes = [IsAuthenticated]
-    serializer_class = VoteOptionUpdateSerializer
 
     def patch(self,request,pk,*args,**kwargs):
         serializer = VoteOptionUpdateSerializer(data = request.data,context = {"pk":pk,'request':request})
@@ -77,23 +73,22 @@ class OptionDeleteAPI(APIView):
 class VoteUpdateAPI(APIView):
     permission_classes = [IsAuthenticated]
 
-    def patch(self,request,pk,*args,**kwargs):
-        serializer = VoteUpdateSerializer(data = request.data, context = {'request':request, "pk": pk},partial = True)
+    def update(self,request,pk,partial):
+        serializer = VoteUpdateSerializer(data = request.data, context = {'request':request, "pk": pk},partial = partial)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(data = serializer.data,status=200)   
+        return Response(data = serializer.data,status=200)     
+      
+    def patch(self,request,pk):
+        self.update(request=request,pk=pk,partial=True)
                    
-    def put(self,request,pk,*args,**kwargs): # Копипаст patch метода кроме Partial, мб не прав
-        serializer = VoteUpdateSerializer(data = request.data, context = {'request':request, "pk": pk},partial = False)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(data = serializer.data,status=200)   
+    def put(self,request,pk):
+        self.update(request=request,pk=pk,partial=False)
     
 class VoteDeleteAPI(APIView):
     permission_classes = [IsAuthenticated]
 
     def delete(self,request,pk,*args,**kwargs):
-        print(request.data)
         serializer = VoteDeleteSerializer(data = {"user":self.request.user,"vote":pk},context = {"pk":pk,"request":request})
         serializer.is_valid(raise_exception=True)
         serializer.validated_data['vote'].delete()
@@ -118,8 +113,8 @@ class VoteListAPI(ListAPIView):
         votes = Vote.objects.filter(Q(for_everyone = True) | Q(for_everyone = False, voteuser__user = self.request.user),published = True).distinct()
         return votes
     
-class VoteDetailAPI(APIView):
-
+class VoteDetailAPI(APIView): # TODO добавить вывод allowed users
+    permission_classes = [IsAuthenticated]
     def get(self,request,pk):
         vote = vote_exists(id = pk)
         if not vote['exists']:
@@ -127,3 +122,13 @@ class VoteDetailAPI(APIView):
         serializer = VoteSerializer(vote['vote'])
         return Response(serializer.data,status=200)
 
+class EditUsersAllowedList(APIView):
+    
+    def post(self,request,pk): # Vote pk
+        serializer = AddUserToAllowedList(data = request.data,context = {"pk":pk,"request":request})
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(data=serializer.data,status=200)
+    
+    def delete(self,request,pk): # Allowed user pk
+        pass

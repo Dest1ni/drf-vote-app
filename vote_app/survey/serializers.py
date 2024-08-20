@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from .models import Survey,SurveyQuesiton,SurveyQuesitonOption,QuestionAnswerOption,SurveyUser
-from .service import survey_exists
+from .service import survey_exists,question_exists,option_exists
 
 class CreateSurveySerializer(serializers.Serializer):
     users_allowed = serializers.JSONField(required = False, 
@@ -82,4 +82,87 @@ class PublishSurveySerializer(serializers.Serializer):
         survey['survey'].published = True
         survey['survey'].save()
         data['survey'] = survey['survey']
+        return data
+    
+class UpdateSurveySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Survey
+        fields = ('name','for_everyone','rerunable')
+    
+    def validate(self, data):
+        survey = survey_exists(self.context['pk'])
+        if not survey['exists']:
+            raise serializers.ValidationError("Неверный id",code=400)    
+        survey = survey['survey']
+        if self.context['request'].user != survey.who_create:
+            raise serializers.ValidationError("Вам недоступен это опрос",code=400)
+        if survey.published:
+            raise serializers.ValidationError("Нельзя изменить опубликованный опрос",code=400)  
+        self.instance = survey       
+        return data
+
+class SurveyQuestionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SurveyQuesiton
+        fields = "__all__"
+
+class SurveyQuestionOptionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SurveyQuesitonOption
+        fields = "__all__"
+
+class UpdateSurveyQuestionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SurveyQuesiton
+        fields = ("question",)
+
+    def validate(self, data):
+        question = question_exists(self.context['pk'])
+        if not question['exists']:
+            raise serializers.ValidationError("Неверный id",code=400)
+        if question['question'].survey_model.who_create != self.context['request'].user:
+            raise serializers.ValidationError("Вы не имеете доступа к этому опросу",code=400)    
+        self.instance = question['question']
+        return data
+    
+class UpdateSurveyQuestionOptionSerializer(serializers.Serializer):
+
+    def validate(self, data):
+        option = option_exists(self.context['pk'])
+        if not option['exists']:
+            raise serializers.ValidationError("Неверный id",code=400)
+        if option['option'].question.survey_model.who_create != self.context['request'].user:
+            raise serializers.ValidationError("Вы не имеете доступа к этому опросу",code=400)
+        self.instance = option['option']
+        return data
+
+class DeleteSurveySerializer(serializers.Serializer):
+    
+    def validate(self, data):
+        survey = survey_exists(self.context['pk'])
+        if not survey['exists']:
+            raise serializers.ValidationError("Неверный id",code=400)    
+        if survey['survey'].who_create != self.context['request'].user:
+            raise serializers.ValidationError("Вы не имеете доступа к этому опросу",code=400)
+        data['survey'] = survey['survey']
+        return data
+
+class DeleteSurveyQuestionSerializer(serializers.Serializer):
+    def validate(self, data):
+        question = question_exists(self.context['pk'])
+        if not question['exists']:
+            raise serializers.ValidationError("Неверный id",code=400)    
+        if question['question'].survey_model.who_create != self.context['request'].user:
+            raise serializers.ValidationError("Вы не имеете доступа к этому опросу",code=400)
+        data['question'] = question['question']
+        return data
+
+class DeleteSurveyQuestionOptionSerializer(serializers.Serializer):
+    def validate(self, data):
+        option = option_exists(self.context['pk'])
+        if not option['exists']:
+            raise serializers.ValidationError("Неверный id",code=400)    
+        if option['option'].question.survey_model.who_create != self.context['request'].user:
+            raise serializers.ValidationError("Вы не имеете доступа к этому опросу",code=400)
+        data['option'] = option['option']
         return data
