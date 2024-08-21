@@ -14,7 +14,7 @@ urlpatterns = [
     path('api/v1/vote/update_option/<int:pk>', OptionUpdateAPI.as_view(), name='vote-update-option'),
     path('api/v1/vote/delete_option/<int:pk>', OptionDeleteAPI.as_view(), name='vote-delete-option'),
     path('api/v1/vote/answer_option/<int:pk>', VoteAnswerOptionAPI.as_view(), name='vote-answer-option'),
-    path('api/v1/vote/add_user/<int:pk>', EditUsersAllowedList.as_view(), name='vote-add-user'),
+    path('api/v1/vote/allowed_users/<int:pk>', EditUsersAllowedList.as_view(), name='vote-add-user'),
 ]
 
 

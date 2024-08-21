@@ -4,7 +4,7 @@ from .models import Vote,VoteUser
 from authentication.models import User
 from .serializers import VoteCreateSerializer, VoteOptionCreateSerializer,VoteSerializer,\
     VoteUpdateSerializer,VotePublishSerializer,VoteOptionUpdateSerializer,VoteOptionDeleteSerializer,VoteDeleteSerializer,VoteAnswerOptionSerializer,\
-    AddUserToAllowedList
+    AddUserToAllowedList,DeleteUserFromAllowedList
 from rest_framework.response import Response
 import json
 from rest_framework.permissions import IsAuthenticated
@@ -18,11 +18,10 @@ class VoteCreateAPI(APIView):
     def post(self,request,*args,**kwargs):
         serializer = VoteCreateSerializer(data = request.data)
         serializer.is_valid(raise_exception=True)
-        
+        users_allowed = serializer.validated_data['users_allowed']
         vote = serializer.create(serializer.validated_data,request.user)
         if not vote.for_everyone:
             with transaction.atomic(): # Транзакция ЭЩКЕРЕЕЕ
-                users_allowed = json.loads(request.data['users_allowed'])
                 for item in users_allowed: 
                     user = User.objects.get(pk = item['user'])
                     VoteUser.objects.create(user = user, vote = vote)
@@ -122,13 +121,17 @@ class VoteDetailAPI(APIView): # TODO добавить вывод allowed users
         serializer = VoteSerializer(vote['vote'])
         return Response(serializer.data,status=200)
 
-class EditUsersAllowedList(APIView):
+class EditUsersAllowedList(APIView): # В случае с post сериализатор ждет список жсонов, в случае с delete ждет просто int мб плохая практика
     
     def post(self,request,pk): # Vote pk
         serializer = AddUserToAllowedList(data = request.data,context = {"pk":pk,"request":request})
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        serializer.save(data = serializer.validated_data)
         return Response(data=serializer.data,status=200)
     
-    def delete(self,request,pk): # Allowed user pk
-        pass
+    def delete(self,request,pk): # Vote pk 
+        serializer = DeleteUserFromAllowedList(data = request.data,context = {"pk":pk,"request":request})
+        serializer.is_valid(raise_exception=True)
+        serializer.save(data = serializer.validated_data)
+        return Response(status=204)
+    

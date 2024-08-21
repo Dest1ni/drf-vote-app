@@ -10,14 +10,6 @@ from rest_framework import serializers
 from rest_framework.permissions import IsAuthenticated
 
 
-class UserExistsAPI(APIView):
-    def get(self,request,id):
-        data = user_exists(id)
-        if data['exists']:
-            data['user'] = UserExistsSerializer(data['user']).data
-            return Response(data=data)
-        return Response({'exists': False})
-
 class UserInfoAPI(APIView):
 
     def post(self,request):
@@ -29,7 +21,7 @@ class RegisterAPIView(APIView):
         serializer = UserRegistrationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        token = Token.objects.get_or_create(user=user)
+        token,created = Token.objects.get_or_create(user=user)
         return Response({
             'token': token.key,
             'username': user.username,

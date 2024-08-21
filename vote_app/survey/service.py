@@ -1,4 +1,4 @@
-from .models import Survey,SurveyQuesiton,SurveyQuesitonOption
+from .models import Survey,SurveyQuesiton,SurveyQuesitonOption,SurveyUser
 
 def survey_exists(id:int) -> dict:
     try:
@@ -20,3 +20,10 @@ def option_exists(id:int) -> dict:
        return {"exists": True,"option":option}
     except:
         return {"exists": False}
+
+def survey_user_exists(id:int) -> dict:
+    try:
+       survey_user = SurveyUser.objects.get(pk = id)
+       return {"exists": True,"survey_user":survey_user}
+    except:
+        return {"exists": False}    
