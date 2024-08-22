@@ -1,16 +1,12 @@
-from django.shortcuts import render
 from .models import User
 from rest_framework.views import APIView 
 from .serializers import LoginSerializer, UserExistsSerializer, UserRegistrationSerializer
 from rest_framework.response import Response
-from .service import user_exists
-from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.authtoken.models import Token
-from rest_framework import serializers
 from rest_framework.permissions import IsAuthenticated
 
-
-class UserInfoAPI(APIView):
+ 
+class UserInfoAPI(APIView): # Подлежит удалению
 
     def post(self,request):
         print(request.user)

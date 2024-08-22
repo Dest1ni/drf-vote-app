@@ -4,6 +4,7 @@ from .models import Survey,SurveyQuesiton,SurveyQuesitonOption,QuestionAnswerOpt
 from .service import survey_exists,question_exists,option_exists, survey_user_exists
 from django.db import transaction
 from authentication.models import User
+from authentication.serializers import UserSerializer
 
 class CreateSurveySerializer(serializers.Serializer):
     users_allowed = serializers.JSONField(required = False, 
@@ -32,6 +33,29 @@ class SurveySerializer(serializers.ModelSerializer):
         model = Survey
         fields = "__all__"
 
+class SurveyDetailSerializer(serializers.ModelSerializer):
+    allowed_users = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Survey
+        fields = "__all__"
+
+    def get_allowed_users(self,obj):
+        users = User.objects.filter(surveyuser__survey=obj)
+        return UserSerializer(users, many=True).data   
+    
+    def validate(self, data):
+        survey = survey_exists(self.context['pk'])
+        if not survey['exists']:
+            raise serializers.ValidationError("Неверный id",code=400)
+        if survey['survey'].who_create != self.context['request'].user:
+            if not survey['survey'].published:
+                raise serializers.ValidationError("Вы не имеете доступа к этому опросу",code=400)    
+            if not survey['survey'].for_everyone and not SurveyUser.objects.filter(survey = survey['survey'],user = self.context['request'].user).exists():
+                raise serializers.ValidationError("Вы не имеете доступа к этому опросу",code=400)     
+        data['survey'] = survey['survey']   
+        return data
+ 
 class AddSurveyQuestionSerializer(serializers.ModelSerializer):
 
     class Meta:

@@ -5,6 +5,7 @@ from .service import vote_exists,option_exists,vote_user_exists
 from django.db.utils import IntegrityError
 from django.db.transaction import atomic
 from authentication.service import user_exists
+from authentication.serializers import UserSerializer
 
 class VoteCreateSerializer(serializers.Serializer): # Обычный сериализатор дает более гибкую логику
     users_allowed = serializers.JSONField(required = False, 
@@ -73,6 +74,33 @@ class VoteExistsSerializer(serializers.ModelSerializer):
         model = Vote
         fields = ('name','pk')
 
+# Как отдавать Users_allowed в VoteDetail чтобы не нарушить логику других View не придумал поэтому отдельный сериализато
+class VoteDetailSerializer(serializers.ModelSerializer): 
+    allowed_users = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Vote
+        fields = ('name','pk','question','who_create','published','for_everyone','rerunable','allowed_users')
+
+    def get_allowed_users(self,obj):
+        users = User.objects.filter(voteuser__vote=obj)
+        return UserSerializer(users, many=True).data
+
+    def validate(self, data):
+        vote = vote_exists(self.context['pk'])
+        if not vote['exists']:
+            raise serializers.ValidationError("Неверный id",code=400)
+        if vote['vote'].who_create != self.context['request'].user:
+            print("1")
+            if not vote['vote'].published:
+                print("2")
+                raise serializers.ValidationError("Вы не имеете доступа к этому голосованию",code=400)    
+            if not vote['vote'].for_everyone and not VoteUser.objects.filter(vote = vote['vote'],user = self.context['request'].user).exists():
+                print("3")
+                raise serializers.ValidationError("Вы не имеете доступа к этому голосованию",code=400)     
+        data['vote'] = vote['vote']   
+        return data
+    
 class VoteOptionCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = VoteOption

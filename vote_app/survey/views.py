@@ -1,7 +1,7 @@
 import json
 from rest_framework.views import APIView
-from .serializers import CreateSurveySerializer,SurveySerializer,AddSurveyQuestionSerializer,AddQuestionOptionSerializer,AnswerQuesionOptionSerializer,\
-    PublishSurveySerializer,UpdateSurveySerializer,SurveyQuestionOptionSerializer,SurveyQuestionSerializer,UpdateSurveyQuestionSerializer,\
+from .serializers import CreateSurveySerializer, SurveyDetailSerializer,SurveySerializer,AddSurveyQuestionSerializer,AddQuestionOptionSerializer,AnswerQuesionOptionSerializer,\
+    PublishSurveySerializer,UpdateSurveySerializer,UpdateSurveyQuestionSerializer,\
     UpdateSurveyQuestionOptionSerializer,DeleteSurveyQuestionOptionSerializer,DeleteSurveyQuestionSerializer,\
     DeleteSurveySerializer,DeleteUserFromAllowedList,AddUserToAllowedList
 from rest_framework.response import Response
@@ -13,7 +13,6 @@ from django.db.models import Q
 from .models import Survey, SurveyUser
 from .service import survey_exists
 
-#TODO нейминг классов неправильный см. Vote.views
 
 class SurveyCreateAPI(APIView):
     permission_classes = [IsAuthenticated]
@@ -71,8 +70,9 @@ class SurveyDetailAPI(APIView):
     def get(self,request,pk):
         survey = survey_exists(id = pk)
         if not survey['exists']:
-            return Response("Неверный id",status=400) # TODO Потом сделаем адекватно
-        serializer = SurveySerializer(survey['survey'])
+            return Response("Неверный id",status=400)
+        serializer = SurveyDetailSerializer(survey['survey'],context = {"request":request,"pk":pk})
+        serializer.validate(serializer.data)
         return Response(serializer.data,status=200)
     
 class SurveyUpdateAPI(APIView):

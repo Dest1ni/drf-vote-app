@@ -7,6 +7,11 @@ class UserExistsSerializer(serializers.ModelSerializer):
         model = User
         fields = ('username','id')
 
+class UserSerializer(serializers.ModelSerializer): # Пока копипаст
+    class Meta:
+        model = User
+        fields = ('username','id')
+
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
 

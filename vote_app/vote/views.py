@@ -4,9 +4,8 @@ from .models import Vote,VoteUser
 from authentication.models import User
 from .serializers import VoteCreateSerializer, VoteOptionCreateSerializer,VoteSerializer,\
     VoteUpdateSerializer,VotePublishSerializer,VoteOptionUpdateSerializer,VoteOptionDeleteSerializer,VoteDeleteSerializer,VoteAnswerOptionSerializer,\
-    AddUserToAllowedList,DeleteUserFromAllowedList
+    AddUserToAllowedList,DeleteUserFromAllowedList,VoteDetailSerializer
 from rest_framework.response import Response
-import json
 from rest_framework.permissions import IsAuthenticated
 from django.db import transaction
 from django.db.models import Q
@@ -112,13 +111,14 @@ class VoteListAPI(ListAPIView):
         votes = Vote.objects.filter(Q(for_everyone = True) | Q(for_everyone = False, voteuser__user = self.request.user),published = True).distinct()
         return votes
     
-class VoteDetailAPI(APIView): # TODO добавить вывод allowed users
+class VoteDetailAPI(APIView):
     permission_classes = [IsAuthenticated]
     def get(self,request,pk):
-        vote = vote_exists(id = pk)
+        vote = vote_exists(pk) # Эти 3 строчки должны быть быть в методе validate но они туда не лезли
         if not vote['exists']:
-            return Response("Неверный id",status=400)
-        serializer = VoteSerializer(vote['vote'])
+            return Response("Неверный id", status=400)
+        serializer = VoteDetailSerializer(vote['vote'],context = {"request":request,'pk':pk})
+        serializer.validate(serializer.data)
         return Response(serializer.data,status=200)
 
 class EditUsersAllowedList(APIView): # В случае с post сериализатор ждет список жсонов, в случае с delete ждет просто int мб плохая практика
