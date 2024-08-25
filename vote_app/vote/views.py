@@ -4,7 +4,7 @@ from .models import Vote,VoteUser
 from authentication.models import User
 from .serializers import VoteCreateSerializer, VoteOptionCreateSerializer,VoteSerializer,\
     VoteUpdateSerializer,VotePublishSerializer,VoteOptionUpdateSerializer,VoteOptionDeleteSerializer,VoteDeleteSerializer,VoteAnswerOptionSerializer,\
-    AddUserToAllowedList,DeleteUserFromAllowedList,VoteDetailSerializer
+    AddUserToAllowedList,DeleteUserFromAllowedList,VoteDetailSerializer,WatchResultSerializer
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.db import transaction
@@ -17,7 +17,8 @@ class VoteCreateAPI(APIView):
     def post(self,request,*args,**kwargs):
         serializer = VoteCreateSerializer(data = request.data)
         serializer.is_valid(raise_exception=True)
-        users_allowed = serializer.validated_data['users_allowed']
+        if 'users_allowed' in serializer.validated_data:
+            users_allowed = serializer.validated_data['users_allowed']
         vote = serializer.create(serializer.validated_data,request.user)
         if not vote.for_everyone:
             with transaction.atomic(): # Транзакция ЭЩКЕРЕЕЕ
@@ -78,10 +79,10 @@ class VoteUpdateAPI(APIView):
         return Response(data = serializer.data,status=200)     
       
     def patch(self,request,pk):
-        self.update(request=request,pk=pk,partial=True)
+        return self.update(request=request,pk=pk,partial=True)
                    
     def put(self,request,pk):
-        self.update(request=request,pk=pk,partial=False)
+        return self.update(request=request,pk=pk,partial=False)
     
 class VoteDeleteAPI(APIView):
     permission_classes = [IsAuthenticated]
@@ -135,3 +136,15 @@ class EditUsersAllowedList(APIView): # В случае с post сериализ�
         serializer.save(data = serializer.validated_data)
         return Response(status=204)
     
+class WatchResults(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, pk):
+        vote = vote_exists(pk) # Эти 3 строчки должны быть быть в методе validate но они туда не лезли
+        if not vote['exists']:
+            return Response("Неверный id", status=400)
+        if not vote['vote'].published:
+            return Response("Голосование не опубликовано", status=400)
+        serializer = WatchResultSerializer(instance=vote['vote'], context={"request": request, "pk": pk})
+        serializer.validate(serializer.data)
+        return Response(serializer.data, status=200)

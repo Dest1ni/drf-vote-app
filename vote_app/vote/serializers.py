@@ -8,22 +8,11 @@ from authentication.service import user_exists
 from authentication.serializers import UserSerializer
 
 class VoteCreateSerializer(serializers.Serializer): # Обычный сериализатор дает более гибкую логику
-    users_allowed = serializers.JSONField(required = False, 
-                                          help_text="""[
-                                          {
-                                            id:1,
-                                            user:1 # id Юзера
-                                          },
-                                          {
-                                            id:2,
-                                            user:2 # id Юзера
-                                          }
-                                          ]"""
-                                          )
+    users_allowed = serializers.JSONField(required = False)
     name = serializers.CharField(help_text="Название голосования")
-    question = serializers.CharField(help_text="Вопрос голосования")
+    question = serializers.CharField(help_text="Вопрос голосования",required = True,min_length = 5)
     for_everyone = serializers.BooleanField(required = True)
-    rerunable = serializers.BooleanField(default=False,help_text="Флаг перепроходимости голосования")
+    rerunable = serializers.BooleanField(default=False)
 
     def validate(self, data):
         for_everyone = data.get('for_everyone')
@@ -74,29 +63,34 @@ class VoteExistsSerializer(serializers.ModelSerializer):
         model = Vote
         fields = ('name','pk')
 
+class VoteOptionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VoteOption
+        fields = "__all__"
 # Как отдавать Users_allowed в VoteDetail чтобы не нарушить логику других View не придумал поэтому отдельный сериализато
 class VoteDetailSerializer(serializers.ModelSerializer): 
     allowed_users = serializers.SerializerMethodField()
-
+    options = serializers.SerializerMethodField()
     class Meta:
         model = Vote
-        fields = ('name','pk','question','who_create','published','for_everyone','rerunable','allowed_users')
+        fields = ('name','pk','question','who_create','published','for_everyone','rerunable','allowed_users','options')
 
     def get_allowed_users(self,obj):
         users = User.objects.filter(voteuser__vote=obj)
         return UserSerializer(users, many=True).data
+
+    def get_options(self,obj):
+            options = VoteOption.objects.filter(vote_model=obj)
+            return VoteOptionSerializer(options, many=True).data
 
     def validate(self, data):
         vote = vote_exists(self.context['pk'])
         if not vote['exists']:
             raise serializers.ValidationError("Неверный id",code=400)
         if vote['vote'].who_create != self.context['request'].user:
-            print("1")
             if not vote['vote'].published:
-                print("2")
                 raise serializers.ValidationError("Вы не имеете доступа к этому голосованию",code=400)    
             if not vote['vote'].for_everyone and not VoteUser.objects.filter(vote = vote['vote'],user = self.context['request'].user).exists():
-                print("3")
                 raise serializers.ValidationError("Вы не имеете доступа к этому голосованию",code=400)     
         data['vote'] = vote['vote']   
         return data
@@ -112,6 +106,8 @@ class VoteOptionCreateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Введен несуществующий id",code=400)
         if not vote['vote'].who_create == self.context['request'].user:
             raise serializers.ValidationError("Вы не имеете доступа к этому голосованию",code=400)
+        if vote['vote'].published:
+            raise serializers.ValidationError("Нельзя добавить вариант ответа к опубликованному голосованию",code=400)
         return data
 
 class VoteOptionUpdateSerializer(serializers.ModelSerializer):
@@ -126,6 +122,8 @@ class VoteOptionUpdateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Введен несуществующий id",code=400)
         if not option['option'].vote_model.who_create == self.context['request'].user:
             raise serializers.ValidationError("Вы не имеете доступа к этому голосованию",code=400)
+        if option['option'].vote_model.published:
+            raise serializers.ValidationError("Нельзя изменить вариант ответа опубликованного голосования",code=400)
         self.instance = option['option'] 
         return data   
     
@@ -155,17 +153,19 @@ class VotePublishSerializer(serializers.Serializer):
     def validate(self, data):
         id = self.context['pk']
         vote = vote_exists(id)
-        if vote['exists']:
-            if vote['vote'].who_create == self.context['request'].user:
-                options = VoteOption.objects.filter(vote_model=id).all()
-                if options.count() == 1:
-                    raise serializers.ValidationError("Нельзя опубликовать голосование c одним выбором ответа")
-                if options.count() == 0:
-                    raise serializers.ValidationError("Нельзя опубликовать голосование без возможности выборов")
-                data['vote'] = vote['vote']
-                return data
+        if not vote['exists']:
+            raise serializers.ValidationError("Введен несуществующий id")    
+        if not vote['vote'].who_create == self.context['request'].user:
             raise serializers.ValidationError("Вы не имеете доступа к этому голосованию")
-        raise serializers.ValidationError("Введен несуществующий id")
+        options = VoteOption.objects.filter(vote_model=id).all()
+        if options.count() == 1:
+            raise serializers.ValidationError("Нельзя опубликовать голосование c одним выбором ответа")
+        if options.count() == 0:
+            raise serializers.ValidationError("Нельзя опубликовать голосование без возможности выборов")
+        data['vote'] = vote['vote']
+        return data
+            
+        
 
 class VoteDeleteSerializer(serializers.Serializer):
     def validate(self,data):
@@ -199,8 +199,13 @@ class VoteAnswerOptionSerializer(serializers.Serializer):
         except IntegrityError:
             raise serializers.ValidationError("Вы уже ответили на это голосование",code=400)
 
+class ResultsAnswersSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VoteAnswer
+        fields = '__all__'
+
 class AddUserToAllowedList(serializers.Serializer):
-    users_allowed = serializers.JSONField(required = True) #Отдельно не валидировал. TODO?
+    users_allowed = serializers.JSONField(required = True)
 
     def validate(self, data):
         vote = vote_exists(self.context['pk'])
@@ -213,19 +218,21 @@ class AddUserToAllowedList(serializers.Serializer):
         if vote['vote'].for_everyone:
             raise serializers.ValidationError("Нельзя добавить пользователей к опубликованному голосованию",code=400)
         data['vote'] = vote['vote']
+        print(data['users_allowed'])
         return data
     
     def save(self,data, **kwargs):
+        item = data['users_allowed']
+        print(item)
         with atomic():
-            for item in data['users_allowed']:
-                for key,value in item.items():
-                    if user_exists(value)['exists']:
-                        user = User.objects.get(pk = value)
-                        if VoteUser.objects.filter(user=user,vote = data['vote']).exists():
-                            continue
-                        VoteUser.objects.create(user = user,vote = data['vote'])
-                    else:
-                        raise serializers.ValidationError(f"Пользвателя {value} не существует",code=400)
+            for key,value in item.items():
+                if user_exists(value)['exists']:
+                    user = User.objects.get(pk = value)
+                    if VoteUser.objects.filter(user=user,vote = data['vote']).exists():
+                        continue
+                    VoteUser.objects.create(user = user,vote = data['vote'])
+                else:
+                    raise serializers.ValidationError(f"Пользвателя {value} не существует",code=400)
 
 class DeleteUserFromAllowedList(serializers.Serializer):
     
@@ -234,7 +241,7 @@ class DeleteUserFromAllowedList(serializers.Serializer):
         user = user_exists(data['user'])
         if not user['exists']:
             raise serializers.ValidationError(f"Пользвателя {data['user']} не существует",code=400)   
-        vote_user = vote_user_exists(self.context['pk'])
+        vote_user = vote_user_exists(user_id = user['user'].id, vote_id = self.context['pk'])
         if not vote_user['exists']:
             raise serializers.ValidationError(f"Пользователю уже не доступно голосование",code=400)
         if not vote_user['exists']:
@@ -244,4 +251,30 @@ class DeleteUserFromAllowedList(serializers.Serializer):
     
     def save(self, data):
         data['vote_user'].delete()
+
+class WatchResultSerializer(serializers.ModelSerializer):
+    answers = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Vote
+        fields = ['id', 'name', 'who_create', 'published', 'for_everyone', 'rerunable', 'answers']
+
+    def get_answers(self, obj):
+        answers = VoteAnswer.objects.filter(option__vote_model=obj).all()
+        return ResultsAnswersSerializer(answers,many = True).data
+    
+    def validate(self, data):
+        vote = vote_exists(self.context['pk'])
+        if not vote['exists']:
+            raise serializers.ValidationError("Введен несуществующий id",code=400)    
+        vote = vote['vote']
+        if not vote.for_everyone:
+            if (not VoteUser.objects.filter(vote = vote,user = self.context['request'].user).exists() )and vote.who_create != self.context['request'].user:
+                raise serializers.ValidationError("Вы не имеете доступа к голосованию",code=400)
+        print(vote)
+        if vote.published == False:
+            raise serializers.ValidationError("Голосовое не опубликовано",code=400)    
+        data['vote'] = vote
+        return data
+
 

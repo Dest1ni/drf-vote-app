@@ -1,9 +1,9 @@
 import json
 from rest_framework.views import APIView
-from .serializers import CreateSurveySerializer, SurveyDetailSerializer,SurveySerializer,AddSurveyQuestionSerializer,AddQuestionOptionSerializer,AnswerQuesionOptionSerializer,\
+from .serializers import CreateSurveySerializer, SurveyDetailSerializer,SurveySerializer,AddSurveyQuestionSerializer,AddQuestionOptionSerializer,AnswerQuestionOptionSerializer,\
     PublishSurveySerializer,UpdateSurveySerializer,UpdateSurveyQuestionSerializer,\
     UpdateSurveyQuestionOptionSerializer,DeleteSurveyQuestionOptionSerializer,DeleteSurveyQuestionSerializer,\
-    DeleteSurveySerializer,DeleteUserFromAllowedList,AddUserToAllowedList
+    DeleteSurveySerializer,DeleteUserFromAllowedList,AddUserToAllowedList, AnswerQuestionOptionModelSerializer,WatchResultSerializer
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.db import transaction
@@ -22,7 +22,7 @@ class SurveyCreateAPI(APIView):
         serializer.is_valid(raise_exception=True)
         survey = serializer.create(serializer.validated_data,request.user)
         if not survey.for_everyone:
-            with transaction.atomic(): # Транзакция ЭЩКЕРЕЕЕ
+            with transaction.atomic():
                 users_allowed = json.loads(request.data['users_allowed'])
                 for item in users_allowed: 
                     user = User.objects.get(pk = item['user'])
@@ -51,11 +51,12 @@ class QuestionOptionAddAPI(APIView):
 class QuesionOptionAnswerAPI(APIView):
     permission_classes = [IsAuthenticated]
 
-    def post(self,request):
-        serializer = AnswerQuesionOptionSerializer(data = request.data,context = {'request':request})
+    def post(self,request,pk):
+        serializer = AnswerQuestionOptionSerializer(data = request.data,context = {'request':request,'pk':pk})
         serializer.is_valid(raise_exception=True)
         answer = serializer.save()
-        return Response(data = AnswerQuesionOptionSerializer(answer).data,status=201)
+        print(answer)
+        return Response(data = AnswerQuestionOptionModelSerializer(answer).data,status=201)
 
 class SurveyPublishAPI(APIView):
     permission_classes = [IsAuthenticated]
@@ -128,12 +129,11 @@ class SurveyQuestionOptionUpdateAPI(APIView):
         return Response(data = serializer.data,status=200)
     
     def put(self,request,pk):
-        res = self.update(request = request,pk = pk,partial = False)
-        return res
+        return self.update(request = request,pk = pk,partial = False)
+         
     
     def path(self,request,pk):
-        res = self.update(request = request,pk = pk,partial = True)
-        return res 
+        return self.update(request = request,pk = pk,partial = True)
 
 class SurveyDeleteAPI(APIView):
     permission_classes = [IsAuthenticated]
@@ -175,4 +175,14 @@ class EditUsersAllowedList(APIView): # В случае с post сериализ�
         serializer.is_valid(raise_exception=True)
         serializer.save(data = serializer.validated_data)
         return Response(status=204)
+
+class WatchResults(APIView):
+    permission_classes = [IsAuthenticated]
     
+    def get(self, request, pk):
+        survey = survey_exists(pk) # Эти 3 строчки должны быть быть в методе validate как их туда запихнуть не придумал
+        if not survey['exists']:
+            return Response("Неверный id", status=400)
+        serializer = WatchResultSerializer(instance=survey['survey'], context={"request": request, "pk": pk})
+        serializer.validate(serializer.data)
+        return Response(serializer.data, status=200)

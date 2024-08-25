@@ -24,12 +24,12 @@ def option_exists(id:int) -> dict:
     except:
         return {'exists': False}    
 
-def vote_user_exists(id:int) -> dict:
+def vote_user_exists(vote_id:int,user_id:int) -> dict:
     """
     Проверяет разрешение юзера на существование 
     """
     try:
-        vote_user = VoteUser.objects.get(id = id)
+        vote_user = VoteUser.objects.filter(vote = vote_id).get(user_id = user_id)
         data = {'vote_user':vote_user,'exists':True}
         return data
     except:

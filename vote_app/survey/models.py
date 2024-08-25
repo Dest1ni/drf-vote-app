@@ -26,7 +26,7 @@ class Survey(models.Model):
         super().save(*args, **kwargs)
     
 
-class SurveyQuesiton(models.Model):
+class SurveyQuesiton(models.Model): # Я поздно заметил это Quesiton...
     """
     Модель вопроса для опроса
     """
@@ -53,9 +53,7 @@ class QuestionAnswerOption(models.Model):
     option = models.ForeignKey(SurveyQuesitonOption,models.CASCADE)
     user = models.ForeignKey(User,models.CASCADE)
     free_answer = models.CharField(null=True,max_length=255)
-    class Meta:
-        unique_together = [["user","option"]]
-
+        
 class SurveyUser(models.Model):
     """
     Модель m-t-m Пользователь <-> Опрос
